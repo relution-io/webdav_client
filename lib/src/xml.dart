@@ -103,10 +103,35 @@ class WebdavXml {
               mTime = null;
             }
 
-            //
-            var str = Uri.decodeFull(href);
-            var name = path2Name(str);
-            var filePath = path + name + (isDir ? '/' : '');
+            // displayname
+            final displayNameElements = findElements(prop, 'displayname');
+            String? displayName = displayNameElements.isNotEmpty
+                ? displayNameElements.single.text
+                : null;
+
+            // Try to parse href to Uri. Use encoded version of hrefas fallback
+            // so filename with special characters wont lead to crash
+            var hrefAsUri =
+                Uri.tryParse(href) ?? Uri.tryParse(Uri.encodeFull(href));
+
+            String pathElementName;
+            String name;
+            // use manual path splitting as fallback
+            if (hrefAsUri != null) {
+              pathElementName = hrefAsUri.pathSegments.lastWhere(
+                (element) => element != "",
+                orElse: () => path2Name(href),
+              );
+            } else {
+              pathElementName = path2Name(href);
+            }
+
+            // some WebDav serve provides a custom name for path, if not use jsut the path name
+            name = displayName ?? pathElementName;
+            // uri.pathSegments will be decoded so we need to encode it back to sue
+            // it as path for further requests
+            var filePath =
+                path + Uri.encodeFull(pathElementName) + (isDir ? '/' : '');
 
             files.add(File(
               path: filePath,
